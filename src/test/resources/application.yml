@@ -1,0 +1,8 @@
+spring:
+  redis:
+    host: 192.168.31.247
+    port: 6379
+    password: 123456
+#    sentinel:
+#      master: my-master
+#      nodes: 192.168.31.247:6379,192.168.31.247:6379
