@@ -13,8 +13,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
 /**
@@ -54,9 +55,37 @@ public class MultiKeyRedisLock extends BaseRedisLock {
 
     @Override
     public Boolean tryLock() {
-        String result = stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, String.class),
+        return LOCK_OK.equals(tryLockInternal());
+    }
+
+    /**
+     * 尝试获得锁，成功返回LOCK_OK，否则返回导致加锁失败对应的key
+     */
+    public String tryLockWithResult() {
+        return tryLockInternal();
+    }
+
+    /**
+     * 带超时时间尝试获得锁，成功返回LOCK_OK，否则返回导致加锁失败对应的key
+     */
+    public String tryLockWithResult(int connectTimeout, TimeUnit timeUnit) {
+        String result = null;
+        long endTime = System.currentTimeMillis() + timeUnit.toMillis(connectTimeout);
+        do {
+            result = tryLockInternal();
+            if (LOCK_OK.equals(tryLockInternal())) {
+                break;
+            }
+
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(lockSleepTime));
+        } while (System.currentTimeMillis() < endTime);
+
+        return result;
+    }
+
+    private String tryLockInternal() {
+        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, String.class),
                 lockKeys, lockUUID, String.valueOf(lockLeaseTime));
-        return Objects.nonNull(result) && LOCK_OK.equals(result);
     }
 
     @Override
@@ -64,4 +93,5 @@ public class MultiKeyRedisLock extends BaseRedisLock {
         return stringRedisTemplate.execute(new DefaultRedisScript<>(luaUnlock, Boolean.class),
                 lockKeys, lockUUID);
     }
+
 }
