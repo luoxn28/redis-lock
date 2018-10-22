@@ -12,52 +12,56 @@ import org.springframework.util.Assert;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Created by xiangnan on 2018/10/21.
+ * Created by xiangnan on 2018/10/22.
  */
 @Slf4j
-public class RedisLock extends BaseRedisLock {
+public class MultiKeyRedisLock extends BaseRedisLock {
+    public final static String LOCK_OK = "ok";
 
     private static String luaLock;
     private static String luaUnlock;
 
     static {
+        // load lock/unlock lua script
         try {
-            luaLock = new BufferedReader(new InputStreamReader(new ClassPathResource("lua/lock.lua").getInputStream()))
+            luaLock = new BufferedReader(new InputStreamReader(new ClassPathResource("lua/keys_lock.lua").getInputStream()))
                     .lines().collect(Collectors.joining(System.lineSeparator()));
-            luaUnlock = new BufferedReader(new InputStreamReader(new ClassPathResource("lua/unlock.lua").getInputStream()))
+            luaUnlock = new BufferedReader(new InputStreamReader(new ClassPathResource("lua/keys_unlock.lua").getInputStream()))
                     .lines().collect(Collectors.joining(System.lineSeparator()));
         } catch (IOException e) {
             log.error("load lua script error", e);
         } finally {
-            Assert.notNull(luaLock, "can't found lock lua script");
-            Assert.notNull(luaUnlock, "can't found unlock lua script");
+            Assert.notNull(luaLock);
+            Assert.notNull(luaUnlock);
         }
     }
 
     @Getter
-    private String lockKey;
+    private List<String> lockKeys;
     private final String lockUUID;
     private StringRedisTemplate stringRedisTemplate = SpringUtils.getBean(StringRedisTemplate.class);
 
-    public RedisLock(String lockKey) {
-        this.lockKey = lockKey;
+    public MultiKeyRedisLock(List<String> lockKeys) {
+        this.lockKeys = lockKeys;
         this.lockUUID = UUID.randomUUID().toString();
     }
 
     @Override
     public Boolean tryLock() {
-        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, Boolean.class),
-                Arrays.asList(lockKey), lockUUID, String.valueOf(lockLeaseTime));
+        String result = stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, String.class),
+                lockKeys, lockUUID, String.valueOf(lockLeaseTime));
+        return Objects.nonNull(result) && LOCK_OK.equals(result);
     }
 
     @Override
     public Boolean unlock() {
         return stringRedisTemplate.execute(new DefaultRedisScript<>(luaUnlock, Boolean.class),
-                Arrays.asList(lockKey), lockUUID);
+                lockKeys, lockUUID);
     }
 }
