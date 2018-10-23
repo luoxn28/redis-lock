@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit;
 public class RedisLockTest {
 
     @Test
-    public void test() {
-        RedisLock lock = new RedisLock(UUID.randomUUID().toString());
+    public void test() throws InterruptedException {
+        RedisLock lock = new RedisLock(UUID.randomUUID().toString(), false);
 
         Assert.isTrue(lock.tryLock());
         Assert.isTrue(!lock.tryLock());
@@ -30,6 +30,15 @@ public class RedisLockTest {
         long start = System.currentTimeMillis();
         Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
         Assert.isTrue(System.currentTimeMillis() - start >= 1000);
+        Assert.isTrue(lock.unlock());
+
+        lock = new RedisLock(UUID.randomUUID().toString(), true);
+        lock.setLockLeaseTime(1);
+        Assert.isTrue(lock.tryLock());
+
+        Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
+        Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
+        Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
         Assert.isTrue(lock.unlock());
     }
 

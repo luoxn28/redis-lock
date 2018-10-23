@@ -2,6 +2,7 @@ package com.luo.redis.lock;
 
 import com.luo.redis.lock.base.BaseRedisLock;
 import com.luo.redis.lock.util.SpringUtils;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -22,11 +23,13 @@ import java.util.stream.Collectors;
  * Created by xiangnan on 2018/10/22.
  */
 @Slf4j
+@EqualsAndHashCode
 public class MultiKeyRedisLock extends BaseRedisLock {
     public final static String LOCK_OK = "ok";
 
     private static String luaLock;
     private static String luaUnlock;
+    private static String luaRenewal;
 
     static {
         // load lock/unlock lua script
@@ -35,11 +38,14 @@ public class MultiKeyRedisLock extends BaseRedisLock {
                     .lines().collect(Collectors.joining(System.lineSeparator()));
             luaUnlock = new BufferedReader(new InputStreamReader(new ClassPathResource("lua/keys_unlock.lua").getInputStream()))
                     .lines().collect(Collectors.joining(System.lineSeparator()));
+            luaRenewal = new BufferedReader(new InputStreamReader(new ClassPathResource("lua/keys_renewal.lua").getInputStream()))
+                    .lines().collect(Collectors.joining(System.lineSeparator()));
         } catch (IOException e) {
             log.error("load lua script error", e);
         } finally {
             Assert.notNull(luaLock);
             Assert.notNull(luaUnlock);
+            Assert.notNull(luaRenewal);
         }
     }
 
@@ -48,7 +54,7 @@ public class MultiKeyRedisLock extends BaseRedisLock {
     private final String lockUUID;
     private StringRedisTemplate stringRedisTemplate = SpringUtils.getBean(StringRedisTemplate.class);
 
-    public MultiKeyRedisLock(List<String> lockKeys) {
+    public MultiKeyRedisLock(List<String> lockKeys, boolean renewal) {
         this.lockKeys = lockKeys;
         this.lockUUID = UUID.randomUUID().toString();
     }
@@ -92,6 +98,12 @@ public class MultiKeyRedisLock extends BaseRedisLock {
     public Boolean unlock() {
         return stringRedisTemplate.execute(new DefaultRedisScript<>(luaUnlock, Boolean.class),
                 lockKeys, lockUUID);
+    }
+
+    @Override
+    public Boolean renewal() {
+        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaRenewal, Boolean.class),
+                lockKeys, lockUUID, String.valueOf(lockLeaseTime));
     }
 
 }

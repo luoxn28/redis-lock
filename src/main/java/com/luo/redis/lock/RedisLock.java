@@ -2,6 +2,7 @@ package com.luo.redis.lock;
 
 import com.luo.redis.lock.base.BaseRedisLock;
 import com.luo.redis.lock.util.SpringUtils;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -14,12 +15,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * Created by xiangnan on 2018/10/21.
  */
 @Slf4j
+@EqualsAndHashCode
 public class RedisLock extends BaseRedisLock {
 
     private static String luaLock;
@@ -44,20 +47,38 @@ public class RedisLock extends BaseRedisLock {
     private final String lockUUID;
     private StringRedisTemplate stringRedisTemplate = SpringUtils.getBean(StringRedisTemplate.class);
 
-    public RedisLock(String lockKey) {
+    public RedisLock(String lockKey, boolean renewal) {
         this.lockKey = lockKey;
         this.lockUUID = UUID.randomUUID().toString();
+        this.renewal = renewal;
     }
 
+    @SuppressWarnings("all")
     @Override
     public Boolean tryLock() {
-        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, Boolean.class),
+        Boolean result = stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, Boolean.class),
                 Arrays.asList(lockKey), lockUUID, String.valueOf(lockLeaseTime));
+        if (result) {
+            afterLock();
+        }
+        return result;
+    }
+
+    @SuppressWarnings("all")
+    @Override
+    public Boolean unlock() {
+        beforeUnlock();
+        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaUnlock, Boolean.class),
+                Arrays.asList(lockKey), lockUUID);
     }
 
     @Override
-    public Boolean unlock() {
-        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaUnlock, Boolean.class),
-                Arrays.asList(lockKey), lockUUID);
+    public Boolean renewal() {
+        try {
+            return stringRedisTemplate.expire(lockKey, lockLeaseTime, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("renewal error", e);
+            return false;
+        }
     }
 }

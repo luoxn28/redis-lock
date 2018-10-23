@@ -25,7 +25,7 @@ public class MultiKeyRedisLockTest {
         String key1 = UUID.randomUUID().toString();
         String key2 = UUID.randomUUID().toString();
         List<String> lockKeys = Arrays.asList(key1, key2);
-        MultiKeyRedisLock lock = new MultiKeyRedisLock(lockKeys);
+        MultiKeyRedisLock lock = new MultiKeyRedisLock(lockKeys, false);
 
         Assert.isTrue(lock.tryLock());
         Assert.isTrue(!lock.tryLock());
