@@ -53,21 +53,14 @@ public class RedisLock extends BaseRedisLock {
         this.renewal = renewal;
     }
 
-    @SuppressWarnings("all")
     @Override
-    public Boolean tryLock() {
-        Boolean result = stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, Boolean.class),
+    public Boolean doTryLock() {
+        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, Boolean.class),
                 Arrays.asList(lockKey), lockUUID, String.valueOf(lockLeaseTime));
-        if (result) {
-            afterLock();
-        }
-        return result;
     }
 
-    @SuppressWarnings("all")
     @Override
-    public Boolean unlock() {
-        beforeUnlock();
+    public Boolean doUnlock() {
         return stringRedisTemplate.execute(new DefaultRedisScript<>(luaUnlock, Boolean.class),
                 Arrays.asList(lockKey), lockUUID);
     }

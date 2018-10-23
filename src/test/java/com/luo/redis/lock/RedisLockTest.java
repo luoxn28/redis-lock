@@ -8,7 +8,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.Assert;
 
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by xiangnan on 2018/10/21.
@@ -27,18 +26,17 @@ public class RedisLockTest {
         Assert.isTrue(lock.unlock());
 
         Assert.isTrue(lock.tryLock());
-        long start = System.currentTimeMillis();
-        Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
-        Assert.isTrue(System.currentTimeMillis() - start >= 1000);
+        Assert.isTrue(!lock.tryLock());
         Assert.isTrue(lock.unlock());
 
         lock = new RedisLock(UUID.randomUUID().toString(), true);
         lock.setLockLeaseTime(1);
+        lock.setConnectTimeout(1000);
         Assert.isTrue(lock.tryLock());
 
-        Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
-        Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
-        Assert.isTrue(!lock.tryLock(1, TimeUnit.SECONDS));
+        Assert.isTrue(!lock.tryLock());
+        Assert.isTrue(!lock.tryLock());
+        Assert.isTrue(!lock.tryLock());
         Assert.isTrue(lock.unlock());
     }
 

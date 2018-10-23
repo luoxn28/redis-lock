@@ -27,6 +27,12 @@ public abstract class BaseRedisLock {
     protected int lockLeaseTime = 3 * ONE_SECOND;
 
     /**
+     * 默认连接超时0ms，单位ms
+     */
+    @Setter
+    protected int connectTimeout = 0;
+
+    /**
      * 加锁失败默认休息1ms
      */
     protected long lockSleepTime = 1;
@@ -36,12 +42,11 @@ public abstract class BaseRedisLock {
      */
     protected volatile boolean renewal = false;
 
-    public abstract Boolean tryLock();
-
-    public Boolean tryLock(int connectTimeout, TimeUnit timeUnit) {
-        long endTime = System.currentTimeMillis() + timeUnit.toMillis(connectTimeout);
+    public Boolean tryLock() {
+        long endTime = System.currentTimeMillis() + connectTimeout;
         do {
-            if (tryLock()) {
+            if (doTryLock()) {
+                afterLock();
                 return true;
             }
 
@@ -51,7 +56,14 @@ public abstract class BaseRedisLock {
         return false;
     }
 
-    public abstract Boolean unlock();
+    public Boolean unlock() {
+        beforeUnlock();
+        return doUnlock();
+    }
+
+    protected abstract Boolean doTryLock();
+
+    protected abstract Boolean doUnlock();
 
     public abstract Boolean renewal();
 

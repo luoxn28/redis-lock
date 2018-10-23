@@ -57,10 +57,11 @@ public class MultiKeyRedisLock extends BaseRedisLock {
     public MultiKeyRedisLock(List<String> lockKeys, boolean renewal) {
         this.lockKeys = lockKeys;
         this.lockUUID = UUID.randomUUID().toString();
+        this.renewal = renewal;
     }
 
     @Override
-    public Boolean tryLock() {
+    public Boolean doTryLock() {
         return LOCK_OK.equals(tryLockInternal());
     }
 
@@ -68,18 +69,23 @@ public class MultiKeyRedisLock extends BaseRedisLock {
      * 尝试获得锁，成功返回LOCK_OK，否则返回导致加锁失败对应的key
      */
     public String tryLockWithResult() {
-        return tryLockInternal();
+        String result = tryLockInternal();
+        if (LOCK_OK.equals(tryLockInternal())) {
+            afterLock();
+        }
+        return result;
     }
 
     /**
      * 带超时时间尝试获得锁，成功返回LOCK_OK，否则返回导致加锁失败对应的key
      */
-    public String tryLockWithResult(int connectTimeout, TimeUnit timeUnit) {
+    private String tryLockInternal() {
         String result = null;
-        long endTime = System.currentTimeMillis() + timeUnit.toMillis(connectTimeout);
+        long endTime = System.currentTimeMillis() + connectTimeout;
         do {
-            result = tryLockInternal();
-            if (LOCK_OK.equals(tryLockInternal())) {
+            result = stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, String.class),
+                    lockKeys, lockUUID, String.valueOf(lockLeaseTime));;
+            if (LOCK_OK.equals(result)) {
                 break;
             }
 
@@ -89,13 +95,8 @@ public class MultiKeyRedisLock extends BaseRedisLock {
         return result;
     }
 
-    private String tryLockInternal() {
-        return stringRedisTemplate.execute(new DefaultRedisScript<>(luaLock, String.class),
-                lockKeys, lockUUID, String.valueOf(lockLeaseTime));
-    }
-
     @Override
-    public Boolean unlock() {
+    protected Boolean doUnlock() {
         return stringRedisTemplate.execute(new DefaultRedisScript<>(luaUnlock, Boolean.class),
                 lockKeys, lockUUID);
     }

@@ -9,7 +9,6 @@ import org.springframework.util.Assert;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static com.luo.redis.lock.MultiKeyRedisLock.LOCK_OK;
 
@@ -36,9 +35,17 @@ public class MultiKeyRedisLockTest {
         Assert.isTrue(lock.unlock());
 
         Assert.isTrue(LOCK_OK.equals(lock.tryLockWithResult()));
-        long start = System.currentTimeMillis();
-        Assert.isTrue(key1.equals(lock.tryLockWithResult(1, TimeUnit.SECONDS)));
-        Assert.isTrue(System.currentTimeMillis() - start >= 1000);
+        Assert.isTrue(key1.equals(lock.tryLockWithResult()));
+        Assert.isTrue(lock.unlock());
+
+        lock = new MultiKeyRedisLock(lockKeys, true);
+        lock.setLockLeaseTime(1);
+        lock.setConnectTimeout(1000);
+        Assert.isTrue(lock.tryLock());
+
+        Assert.isTrue(!lock.tryLock());
+        Assert.isTrue(!lock.tryLock());
+        Assert.isTrue(!lock.tryLock());
         Assert.isTrue(lock.unlock());
     }
 }
