@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.luo.redis.lock.config.RedisLockAutoConfiguration

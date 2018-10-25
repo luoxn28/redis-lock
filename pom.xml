@@ -8,14 +8,10 @@
     <artifactId>redis-lock</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-parent</artifactId>
-        <version>2.0.4.RELEASE</version>
-    </parent>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring.boot.version>2.0.4.RELEASE</spring.boot.version>
+        <spring-data-redis>2.0.9.RELEASE</spring-data-redis>
         <lombok.version>1.16.20</lombok.version>
         <jedis.version>2.9.0</jedis.version>
         <commons.lang3.version>3.8</commons.lang3.version>
@@ -23,19 +19,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.data</groupId>
             <artifactId>spring-data-redis</artifactId>
+            <version>${spring-data-redis}</version>
         </dependency>
 
         <dependency>
@@ -54,6 +40,13 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${commons.lang3.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <version>${spring.boot.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
